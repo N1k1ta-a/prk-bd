@@ -1,1 +1,1 @@
-# prk-bd
+# praktika-bd

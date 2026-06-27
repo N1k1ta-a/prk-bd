@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Практика - Иерархия, Наследование, Версионирование</title>
+    <style>
+        body { font-family: Arial; margin: 20px; }
+        .section { border: 1px solid #ccc; margin: 10px 0; padding: 15px; border-radius: 5px; }
+        button { margin: 5px; padding: 5px 10px; cursor: pointer; }
+        pre { background: #f4f4f4; padding: 10px; overflow-x: auto; }
+        input, select { margin: 5px; padding: 5px; }
+        .orm { background: #4CAF50; color: white; border: none; border-radius: 3px; }
+        .native { background: #2196F3; color: white; border: none; border-radius: 3px; }
+        .method { display: inline-block; padding: 2px 6px; border-radius: 3px; font-size: 12px; }
+        .orm-bg { background: #4CAF50; color: white; }
+        .native-bg { background: #2196F3; color: white; }
+        h2 { margin-top: 0; }
+    </style>
+</head>
+<body>
+    <h1>📁 Информационная система</h1>
+    <p><span class="method orm-bg">ORM</span> <span class="method native-bg">Native SQL</span> — два параллельных способа доступа</p>
+
+    <div class="section">
+        <h2>➕ Создать сотрудника</h2>
+        <input type="text" id="empName" placeholder="Имя">
+        <input type="number" id="empDept" placeholder="ID отдела (1-5)">
+        <select id="empType">
+            <option value="developer">Разработчик</option>
+            <option value="manager">Менеджер</option>
+        </select>
+        <input type="text" id="empExtra" placeholder="Python (язык) или 5 (размер команды)">
+        <button class="orm" onclick="createEmployee('orm')">Создать (ORM)</button>
+        <button class="native" onclick="createEmployee('native')">Создать (Native)</button>
+    </div>
+
+    <div class="section">
+        <h2>🔍 Получить сотрудника</h2>
+        <input type="number" id="getEmpId" placeholder="ID">
+        <button class="orm" onclick="getEmployee('orm')">Получить (ORM)</button>
+        <button class="native" onclick="getEmployee('native')">Получить (Native)</button>
+        <pre id="getResult"></pre>
+    </div>
+
+    <div class="section">
+        <h2>📋 Список сотрудников</h2>
+        <input type="number" id="listDept" placeholder="ID отдела (опционально)">
+        <button class="orm" onclick="listEmployees('orm')">Список (ORM)</button>
+        <button class="native" onclick="listEmployees('native')">Список (Native)</button>
+        <pre id="listResult"></pre>
+    </div>
+
+    <div class="section">
+        <h2>✏️ Обновить сотрудника</h2>
+        <input type="number" id="updateId" placeholder="ID">
+        <input type="text" id="updateName" placeholder="Новое имя">
+        <input type="number" id="updateDept" placeholder="Новый отдел">
+        <button class="orm" onclick="updateEmployee('orm')">Обновить (ORM)</button>
+        <button class="native" onclick="updateEmployee('native')">Обновить (Native)</button>
+    </div>
+
+    <div class="section">
+        <h2>🗑️ Удалить сотрудника</h2>
+        <input type="number" id="deleteId" placeholder="ID">
+        <button class="orm" onclick="deleteEmployee('orm')">Удалить (ORM)</button>
+        <button class="native" onclick="deleteEmployee('native')">Удалить (Native)</button>
+    </div>
+
+    <div class="section">
+        <h2>📜 История версий</h2>
+        <input type="number" id="historyId" placeholder="ID сотрудника">
+        <button class="orm" onclick="getHistory('orm')">История (ORM)</button>
+        <button class="native" onclick="getHistory('native')">История (Native)</button>
+        <pre id="historyResult"></pre>
+    </div>
+
+    <div class="section">
+        <h2>🌳 Дерево отделов (иерархия)</h2>
+        <button class="orm" onclick="loadTree('orm')">Загрузить (ORM)</button>
+        <button class="native" onclick="loadTree('native')">Загрузить (Native)</button>
+        <pre id="treeResult"></pre>
+    </div>
+
+    <script>
+        const API_URL = 'http://localhost:8000';
+
+        async function request(url, method, body = null) {
+            const opts = {
+                method: method,
+                headers: {'Content-Type': 'application/json'}
+            };
+            if (body) opts.body = JSON.stringify(body);
+            const res = await fetch(url, opts);
+            if (!res.ok) throw new Error(await res.text());
+            return res.json();
+        }
+
+        async function createEmployee(type) {
+            const data = {
+                name: document.getElementById('empName').value,
+                department_id: parseInt(document.getElementById('empDept').value),
+                employee_type: document.getElementById('empType').value,
+                extra: {}
+            };
+            const extraVal = document.getElementById('empExtra').value;
+            if (data.employee_type === 'developer') {
+                data.extra.programming_language = extraVal || 'Python';
+            } else {
+                data.extra.team_size = parseInt(extraVal) || 1;
+            }
+            const res = await request(`${API_URL}/api/${type}/employees`, 'POST', data);
+            alert('Создан ID: ' + res.id);
+        }
+
+        async function getEmployee(type) {
+            const id = document.getElementById('getEmpId').value;
+            if (!id) return;
+            const res = await request(`${API_URL}/api/${type}/employees/${id}`, 'GET');
+            document.getElementById('getResult').innerText = JSON.stringify(res, null, 2);
+        }
+
+        async function listEmployees(type) {
+            const dept = document.getElementById('listDept').value;
+            let url = `${API_URL}/api/${type}/employees`;
+            if (dept) url += `?department_id=${dept}`;
+            const res = await request(url, 'GET');
+            document.getElementById('listResult').innerText = JSON.stringify(res, null, 2);
+        }
+
+        async function updateEmployee(type) {
+            const id = document.getElementById('updateId').value;
+            if (!id) return;
+            const data = {};
+            const newName = document.getElementById('updateName').value;
+            const newDept = document.getElementById('updateDept').value;
+            if (newName) data.name = newName;
+            if (newDept) data.department_id = parseInt(newDept);
+            await request(`${API_URL}/api/${type}/employees/${id}`, 'PUT', data);
+            alert('Обновлено');
+        }
+
+        async function deleteEmployee(type) {
+            const id = document.getElementById('deleteId').value;
+            if (!id) return;
+            await request(`${API_URL}/api/${type}/employees/${id}`, 'DELETE');
+            alert('Удалено');
+        }
+
+        async function getHistory(type) {
+            const id = document.getElementById('historyId').value;
+            if (!id) return;
+            const res = await request(`${API_URL}/api/${type}/employees/${id}/history`, 'GET');
+            document.getElementById('historyResult').innerText = JSON.stringify(res, null, 2);
+        }
+
+        async function loadTree(type) {
+            const res = await request(`${API_URL}/api/${type}/tree`, 'GET');
+            document.getElementById('treeResult').innerText = JSON.stringify(res, null, 2);
+        }
+
+        loadTree('orm');
+    </script>
+</body>
+</html>
